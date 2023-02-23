@@ -1,7 +1,11 @@
 # 장고의 단축함수인 render() 함수를 임포트함
 from django.shortcuts import get_object_or_404, render
+# vote 뷰에서는 리다이렉트 기능이 필요함. 이를 위해 HttpResonseRedirect 클래스를 임포트함
+from django.http import HttpResponseRedirect
+# url 처리를 위해 reverse() 함수를 임포트함
+from django.urls import reverse
 # Question 테이블에 엑세스하기 위해 polls.models.Question 클래스를 임포트
-from polls.models import Question
+from polls.models import Choice, Question
 
 # Create your views here.
 
@@ -26,3 +30,35 @@ def detail(request, question_id):
     # render 함수 다시 사용. 이는 템플릿 파일 polls/detail.html에 컨텍스트 변수를 적용하여 사용자에게 보여 줄 최종 HTML 텍스트를 만들고, 이를 담아서 HttpResponse 객체를 반환함. 템플릿에게 넘겨주는 컨텍스트 사전을 render() 함수의 인자로 직접 써주고 있음. 템플릿 파일에서는 question 이란 변수를 사용할 수 있게 됨.
     # detail() 뷰 함수는 최종적으로 detail.html의 텍스트 데이터를 담은 HttpResponse 객체를 반환
     return render(request, 'polls/detail.html', {'question': question})
+
+# 뷰 함수를 정의. request 객체는 필수 인자. detail() 뷰처럼 question_id 인자를 더 받음.
+# path('polls/<int:question_id>/vote/', views.vote, name='vote'), ->(urls.py에 있음) 에 의해 vote() 뷰 함수로 인자가 넘어옴
+
+
+def vote(request, question_id):
+    # get_object_or_404() 단축함수 사용
+    question = get_object_or_404(Question, pk=question_id)
+    try:  # Choice 테이블을 검색. 검색 조건은 pk=request.POST['choice']임. request.POST는 제출된 폼의 데이터를 담고있는 객체로서, 파이썬 사전처럼 키로 그 값을 구할 수 있음. request.POST['choice']는 폼 데이터에서 키가 'choice'에 해당하는 값인 choice.id를 스트링으로 리턴함
+        selected_choice = question.choice_set.get(pk=request.POST['choice'])
+    # 폼의 POST 데이터에서 'choice'라는 키가 없으면 KeyError 익셉션을 발생시킴. 또는 검색 조건에 맞는 객체가 없으면 Choice.DoesNotExist 익셉셥이 발생
+    except (KeyError, Choice.DoesNotExist):
+        # 익셉션이 발생하면 render() 함수에 의해서 question과 error_message 컨텍스트 변수를 detail.html 템플릿으로 전달함. 사용자에게 에러메시지와 함께 설문 투표 폼을 다시 보여줌.
+        return render(request, 'polls/detail.html', {
+            'question': question,
+            'error_message': "You didn't select a choice."
+        })
+    else:  # 익셉션이 발생하지 않고 정상 처리 하는 경우
+        selected_choice.votes += 1  # Choice 객체.votes 속성 즉, 선택 카운트를 +1 증가시킴
+        selected_choice.save()  # 변경 사항을 해당 Choice 테이블에 저장함.
+        # POST 데이터를 정상적으로 처리하였으면,
+        # 항상 HttpResponseRedirect를 반환하여 리다이렉션 처리함
+        # 이번에 vote()뷰 함수가 반환하는 객체는 HttpResponse가 아니라 HttpResponseRedirect 객체임. 리다이렉트할 타겟 URL을 인자로 받음. 타겟 URL은 reverse() 함수로 만듬.
+        return HttpResponseRedirect(reverse('polls:results', args=(question_id,)))
+        # 최종적으로 vote()뷰 함수는 리다이렉트할 타겟 URL을 담은 HttpResponseRedirect 객체를 반환함. 이처럼 웹프로그램에서 POST 방식의 폼 데이터를 처리하는 경우, 그 결과를 보여줄 수 있는 페이지로 이동시키기 위해 HttpResponseRedirect 객체를 리턴하는 것이 일반적임.
+
+
+def results(request, question_id):
+    question = get_object_or_404(Question, pk=question_id)
+    # render 함수 사용. 템플릿으로 question 변수를 넘겨주는 것은 동일하지만 템플릿 파일이 다르므로, 사용자에게 보여주는 화면은 달라짐
+    # results 뷰는 최종적으로 results.html 템플릿 코드를 렌더링한 결과인 HTML 텍스트 데이터를 담은 HttpResponse 객체를 반환함.
+    return render(request, 'polls/results.html', {'question': question})

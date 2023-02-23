@@ -1,0 +1,17 @@
+<h1>{{question.question_text}}</h1>
+
+<ul>
+  {% for choice in question.choice_set.all %}
+  <li>
+    {{ choice.choice_text}} - {{choice.votes}} vote{{ choice.votes|pluralize}}
+  </li>
+  {% endfor %}
+</ul>
+
+<a href="{% url 'polls:detail' question.id %}">Vote Again?</a>
+
+{% comment %} vote choice.votes|pluralize 의 의미는 choice.votes 값에 따라 복수
+접미사(s)를 붙여주는 것. choice.votes값에 따라 vote 또는 votes가 표시됨 Vote
+again 이라는 문장을 보여주고, 그 문장에 URL 링크를 연결함. (a href 속성
+역할).URL 링크는 {% url %} 태그를 사용하여 /polls/3/과 같은 형식으로 만들어 줌
+{% endcomment %}
