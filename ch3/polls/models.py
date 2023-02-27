@@ -9,7 +9,7 @@ from django.db import models
 class Question(models.Model):
     question_text = models.CharField(max_length=200)
     # DateTimeField() 클래스에 정의한 date published는 put_data 컬럼에 대한 레이블 문구. Admin 사이트에서 이 문구를 보게 될 것
-    pub_data = models.DateTimeField('date published')
+    pub_data = models.DateTimeField('data published')
 
     def __str__(self):
         return self.question_text
